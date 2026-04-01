@@ -1,0 +1,687 @@
+<!-- templates/analytics.html -->
+{% extends "base.html" %}
+
+{% block title %}Advanced Analytics{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<style>
+    .stat-card {
+        transition: all 0.3s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .loading-spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #3498db;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .trend-up {
+        color: #10b981;
+    }
+    .trend-down {
+        color: #ef4444;
+    }
+    .anomaly-point {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .anomaly-point:hover {
+        transform: scale(1.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Advanced Analytics</h1>
+            <p class="text-gray-600 mt-1">Comprehensive transformer performance analysis and predictive insights</p>
+        </div>
+        <div class="flex space-x-3">
+            <button onclick="refreshData()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center space-x-2">
+                <i class="fas fa-sync-alt"></i>
+                <span>Refresh</span>
+            </button>
+            <button onclick="exportReport()" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition flex items-center space-x-2">
+                <i class="fas fa-download"></i>
+                <span>Export Report</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Controls -->
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Select Location</label>
+                <select id="location-select" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="all">All Locations</option>
+                    {% for location in locations %}
+                        <option value="{{ location }}">{{ location }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Time Period</label>
+                <select id="period-select" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="7">Last 7 days</option>
+                    <option value="30" selected>Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                    <option value="180">Last 6 months</option>
+                    <option value="365">Last year</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Analysis Type</label>
+                <select id="analysis-select" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="trend">Trend Analysis</option>
+                    <option value="correlation">Correlation Analysis</option>
+                    <option value="anomaly">Anomaly Detection</option>
+                    <option value="forecast">Predictive Forecast</option>
+                    <option value="health">Health Index</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Loading Indicator -->
+    <div id="loading" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-8 flex flex-col items-center">
+            <div class="loading-spinner"></div>
+            <p class="mt-4 text-gray-700">Analyzing data...</p>
+        </div>
+    </div>
+    
+    <!-- Key Performance Indicators -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6" id="kpi-cards">
+        <!-- Dynamic KPI cards will be inserted here -->
+    </div>
+    
+    <!-- Main Charts Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Temperature & Current Trends</h2>
+            <div id="trend-chart" style="height: 400px;"></div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Correlation Matrix</h2>
+            <div id="correlation-chart" style="height: 400px;"></div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Anomaly Detection</h2>
+            <div id="anomaly-chart" style="height: 400px;"></div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Predictive Forecast (7 days)</h2>
+            <div id="forecast-chart" style="height: 400px;"></div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Fault Distribution & Severity</h2>
+            <div id="fault-distribution" style="height: 400px;"></div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Health Index Dashboard</h2>
+            <div id="health-dashboard" style="height: 400px;"></div>
+        </div>
+    </div>
+    
+    <!-- Additional Analytics -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Seasonal Patterns</h2>
+            <div id="seasonal-chart" style="height: 300px;"></div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Hourly Load Profile</h2>
+            <div id="hourly-chart" style="height: 300px;"></div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Risk Assessment</h2>
+            <div id="risk-chart" style="height: 300px;"></div>
+        </div>
+    </div>
+    
+    <!-- Advanced Insights Table -->
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Advanced Insights & Recommendations</h2>
+        <div id="insights-table" class="overflow-x-auto">
+            <!-- Dynamic insights will be inserted here -->
+        </div>
+    </div>
+</div>
+
+<script>
+// Global variables
+let currentData = null;
+
+// Initialize charts
+function initCharts() {
+    updateAnalytics();
+}
+
+// Update analytics based on selections
+function updateAnalytics() {
+    const location = document.getElementById('location-select').value;
+    const period = document.getElementById('period-select').value;
+    const analysis = document.getElementById('analysis-select').value;
+    
+    showLoading();
+    
+    fetch(`/api/advanced-analytics?location=${location}&period=${period}&analysis=${analysis}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentData = data;
+                updateKPIs(data.kpis);
+                updateTrendChart(data.trend);
+                updateCorrelationChart(data.correlation);
+                updateAnomalyChart(data.anomalies);
+                updateForecastChart(data.forecast);
+                updateFaultDistribution(data.faults);
+                updateHealthDashboard(data.health);
+                updateSeasonalChart(data.seasonal);
+                updateHourlyChart(data.hourly);
+                updateRiskChart(data.risk);
+                updateInsightsTable(data.insights);
+            } else {
+                showError(data.error);
+            }
+            hideLoading();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showError('Failed to load analytics data');
+            hideLoading();
+        });
+}
+
+// Update KPI cards
+function updateKPIs(kpis) {
+    const container = document.getElementById('kpi-cards');
+    container.innerHTML = `
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white stat-card">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm opacity-90">Average Current</p>
+                    <p class="text-3xl font-bold mt-2">${kpis.avg_current.toFixed(1)} A</p>
+                    <p class="text-sm mt-2 ${kpis.current_trend > 0 ? 'trend-up' : 'trend-down'}">
+                        <i class="fas fa-arrow-${kpis.current_trend > 0 ? 'up' : 'down'}"></i>
+                        ${Math.abs(kpis.current_trend).toFixed(1)}% vs last period
+                    </p>
+                </div>
+                <i class="fas fa-bolt text-4xl opacity-50"></i>
+            </div>
+        </div>
+        <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-lg shadow-lg p-6 text-white stat-card">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm opacity-90">Average Temperature</p>
+                    <p class="text-3xl font-bold mt-2">${kpis.avg_temp.toFixed(1)} °C</p>
+                    <p class="text-sm mt-2 ${kpis.temp_trend > 0 ? 'trend-up' : 'trend-down'}">
+                        <i class="fas fa-arrow-${kpis.temp_trend > 0 ? 'up' : 'down'}"></i>
+                        ${Math.abs(kpis.temp_trend).toFixed(1)}% vs last period
+                    </p>
+                </div>
+                <i class="fas fa-thermometer-half text-4xl opacity-50"></i>
+            </div>
+        </div>
+        <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white stat-card">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm opacity-90">Fault Rate</p>
+                    <p class="text-3xl font-bold mt-2">${kpis.fault_rate.toFixed(2)}%</p>
+                    <p class="text-sm mt-2">${kpis.total_faults} total faults</p>
+                </div>
+                <i class="fas fa-exclamation-triangle text-4xl opacity-50"></i>
+            </div>
+        </div>
+        <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white stat-card">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm opacity-90">Health Index</p>
+                    <p class="text-3xl font-bold mt-2">${kpis.health_index.toFixed(1)}%</p>
+                    <p class="text-sm mt-2">${kpis.health_status}</p>
+                </div>
+                <i class="fas fa-heartbeat text-4xl opacity-50"></i>
+            </div>
+        </div>
+    `;
+}
+
+// Update trend chart
+function updateTrendChart(trendData) {
+    const trace1 = {
+        x: trendData.dates,
+        y: trendData.temperatures,
+        name: 'Temperature (°C)',
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: { color: '#ef4444', width: 2 },
+        marker: { size: 4, color: '#ef4444' },
+        yaxis: 'y1'
+    };
+    
+    const trace2 = {
+        x: trendData.dates,
+        y: trendData.currents,
+        name: 'Current (A)',
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: { color: '#3b82f6', width: 2 },
+        marker: { size: 4, color: '#3b82f6' },
+        yaxis: 'y2'
+    };
+    
+    const layout = {
+        xaxis: { title: 'Date' },
+        yaxis: { title: 'Temperature (°C)', side: 'left', color: '#ef4444' },
+        yaxis2: { title: 'Current (A)', overlaying: 'y', side: 'right', color: '#3b82f6' },
+        hovermode: 'x unified',
+        showlegend: true,
+        legend: { x: 0, y: 1.1, orientation: 'h' }
+    };
+    
+    Plotly.newPlot('trend-chart', [trace1, trace2], layout);
+}
+
+// Update correlation chart
+function updateCorrelationChart(correlationData) {
+    const z = correlationData.matrix;
+    const x = correlationData.variables;
+    const y = correlationData.variables;
+    
+    const trace = {
+        z: z,
+        x: x,
+        y: y,
+        type: 'heatmap',
+        colorscale: 'RdBu',
+        zmin: -1,
+        zmax: 1,
+        text: z.map(row => row.map(val => val.toFixed(2))),
+        texttemplate: '%{text}',
+        textfont: { size: 10 },
+        hovertemplate: '%{x} vs %{y}<br>Correlation: %{z:.3f}<extra></extra>'
+    };
+    
+    const layout = {
+        xaxis: { title: 'Variables' },
+        yaxis: { title: 'Variables' },
+        width: '100%',
+        height: 400
+    };
+    
+    Plotly.newPlot('correlation-chart', [trace], layout);
+}
+
+// Update anomaly chart
+function updateAnomalyChart(anomalyData) {
+    const normalTrace = {
+        x: anomalyData.dates,
+        y: anomalyData.values,
+        name: 'Normal Readings',
+        type: 'scatter',
+        mode: 'markers',
+        marker: { color: '#3b82f6', size: 6, opacity: 0.6 }
+    };
+    
+    const anomalyTrace = {
+        x: anomalyData.anomaly_dates,
+        y: anomalyData.anomaly_values,
+        name: 'Anomalies Detected',
+        type: 'scatter',
+        mode: 'markers',
+        marker: { color: '#ef4444', size: 10, symbol: 'x' },
+        text: anomalyData.anomaly_descriptions,
+        hovertemplate: '<b>Anomaly:</b> %{text}<br>Value: %{y:.2f}<extra></extra>'
+    };
+    
+    const layout = {
+        xaxis: { title: 'Date' },
+        yaxis: { title: 'Value' },
+        showlegend: true,
+        annotations: [{
+            text: `Detected ${anomalyData.anomaly_count} anomalies`,
+            x: 1,
+            y: 1,
+            xref: 'paper',
+            yref: 'paper',
+            showarrow: false,
+            bgcolor: '#fef3c7',
+            bordercolor: '#f59e0b'
+        }]
+    };
+    
+    Plotly.newPlot('anomaly-chart', [normalTrace, anomalyTrace], layout);
+}
+
+// Update forecast chart
+function updateForecastChart(forecastData) {
+    const historicalTrace = {
+        x: forecastData.historical_dates,
+        y: forecastData.historical_values,
+        name: 'Historical',
+        type: 'scatter',
+        mode: 'lines',
+        line: { color: '#3b82f6', width: 2 }
+    };
+    
+    const forecastTrace = {
+        x: forecastData.forecast_dates,
+        y: forecastData.forecast_values,
+        name: 'Forecast',
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: { color: '#10b981', width: 2, dash: 'dash' },
+        marker: { color: '#10b981', size: 6 }
+    };
+    
+    const upperBoundTrace = {
+        x: forecastData.forecast_dates,
+        y: forecastData.upper_bound,
+        name: 'Upper Bound',
+        type: 'scatter',
+        mode: 'lines',
+        line: { color: '#ef4444', width: 1, dash: 'dot' },
+        showlegend: true
+    };
+    
+    const lowerBoundTrace = {
+        x: forecastData.forecast_dates,
+        y: forecastData.lower_bound,
+        name: 'Lower Bound',
+        type: 'scatter',
+        mode: 'lines',
+        line: { color: '#ef4444', width: 1, dash: 'dot' },
+        fill: 'tonexty',
+        fillcolor: 'rgba(239, 68, 68, 0.1)',
+        showlegend: true
+    };
+    
+    const layout = {
+        xaxis: { title: 'Date' },
+        yaxis: { title: 'Temperature (°C)' },
+        hovermode: 'x unified'
+    };
+    
+    Plotly.newPlot('forecast-chart', [historicalTrace, forecastTrace, upperBoundTrace, lowerBoundTrace], layout);
+}
+
+// Update fault distribution
+function updateFaultDistribution(faultData) {
+    const trace = {
+        values: faultData.counts,
+        labels: faultData.types,
+        type: 'pie',
+        hole: 0.4,
+        textinfo: 'label+percent',
+        textposition: 'outside',
+        marker: {
+            colors: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec489a']
+        },
+        hovertemplate: '<b>%{label}</b><br>Count: %{value}<br>Percentage: %{percent}<extra></extra>'
+    };
+    
+    const layout = {
+        showlegend: true,
+        legend: { orientation: 'h', y: -0.1 }
+    };
+    
+    Plotly.newPlot('fault-distribution', [trace], layout);
+}
+
+// Update health dashboard
+function updateHealthDashboard(healthData) {
+    const trace = {
+        type: 'indicator',
+        mode: 'gauge+number+delta',
+        value: healthData.current_score,
+        title: { text: 'Overall Health Score', font: { size: 18 } },
+        delta: { reference: healthData.previous_score, increasing: { color: '#10b981' } },
+        gauge: {
+            axis: { range: [0, 100], tickwidth: 1, tickcolor: 'dark' },
+            bar: { color: healthData.current_score > 70 ? '#10b981' : healthData.current_score > 40 ? '#f59e0b' : '#ef4444' },
+            bgcolor: 'white',
+            borderwidth: 2,
+            bordercolor: 'gray',
+            steps: [
+                { range: [0, 40], color: '#fee2e2' },
+                { range: [40, 70], color: '#fed7aa' },
+                { range: [70, 100], color: '#d1fae5' }
+            ],
+            threshold: {
+                line: { color: 'red', width: 4 },
+                thickness: 0.75,
+                value: healthData.warning_threshold
+            }
+        }
+    };
+    
+    const layout = {
+        width: '100%',
+        height: 400,
+        margin: { t: 50, b: 50, l: 50, r: 50 }
+    };
+    
+    Plotly.newPlot('health-dashboard', [trace], layout);
+}
+
+// Update seasonal chart
+function updateSeasonalChart(seasonalData) {
+    const trace = {
+        x: seasonalData.months,
+        y: seasonalData.temperatures,
+        name: 'Temperature',
+        type: 'bar',
+        marker: { color: '#ef4444' }
+    };
+    
+    const trace2 = {
+        x: seasonalData.months,
+        y: seasonalData.currents,
+        name: 'Current',
+        type: 'scatter',
+        mode: 'lines+markers',
+        yaxis: 'y2',
+        marker: { color: '#3b82f6' }
+    };
+    
+    const layout = {
+        xaxis: { title: 'Month' },
+        yaxis: { title: 'Temperature (°C)', side: 'left' },
+        yaxis2: { title: 'Current (A)', overlaying: 'y', side: 'right' },
+        barmode: 'group'
+    };
+    
+    Plotly.newPlot('seasonal-chart', [trace, trace2], layout);
+}
+
+// Update hourly chart
+function updateHourlyChart(hourlyData) {
+    const trace = {
+        x: hourlyData.hours,
+        y: hourlyData.currents,
+        type: 'scatter',
+        mode: 'lines+markers',
+        name: 'Current',
+        line: { color: '#3b82f6', width: 2 },
+        marker: { size: 6, color: '#3b82f6' },
+        fill: 'tozeroy',
+        fillcolor: 'rgba(59, 130, 246, 0.1)'
+    };
+    
+    const layout = {
+        xaxis: { title: 'Hour of Day', tickmode: 'linear', dtick: 1 },
+        yaxis: { title: 'Current (A)' },
+        annotations: [{
+            text: 'Peak Hours: 8-10 AM & 6-8 PM',
+            x: 0.5,
+            y: 1.05,
+            xref: 'paper',
+            yref: 'paper',
+            showarrow: false,
+            bgcolor: '#fef3c7'
+        }]
+    };
+    
+    Plotly.newPlot('hourly-chart', [trace], layout);
+}
+
+// Update risk chart
+function updateRiskChart(riskData) {
+    const traces = [];
+    const categories = ['Temperature Risk', 'Current Risk', 'Vibration Risk', 'Fault Risk', 'Overall Risk'];
+    
+    riskData.risks.forEach((location, idx) => {
+        traces.push({
+            x: categories,
+            y: location.values,
+            name: location.name,
+            type: 'bar',
+            marker: { color: location.color }
+        });
+    });
+    
+    const layout = {
+        barmode: 'group',
+        xaxis: { title: 'Risk Categories' },
+        yaxis: { title: 'Risk Level (%)', range: [0, 100] },
+        legend: { orientation: 'h', y: -0.2 }
+    };
+    
+    Plotly.newPlot('risk-chart', traces, layout);
+}
+
+// Update insights table
+function updateInsightsTable(insights) {
+    const container = document.getElementById('insights-table');
+    let html = `
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Insight</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Impact</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recommendation</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+    `;
+    
+    insights.forEach(insight => {
+        const priorityColor = {
+            'High': 'bg-red-100 text-red-800',
+            'Medium': 'bg-yellow-100 text-yellow-800',
+            'Low': 'bg-green-100 text-green-800'
+        }[insight.priority];
+        
+        html += `
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${priorityColor}">
+                        ${insight.priority}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-900">${insight.insight}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${insight.impact}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${insight.recommendation}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                        <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                            <div class="bg-blue-500 h-2 rounded-full" style="width: ${insight.confidence}%"></div>
+                        </div>
+                        <span class="text-sm text-gray-600">${insight.confidence}%</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `
+            </tbody>
+        </table>
+    `;
+    
+    container.innerHTML = html;
+}
+
+// Helper functions
+function showLoading() {
+    document.getElementById('loading').classList.remove('hidden');
+}
+
+function hideLoading() {
+    document.getElementById('loading').classList.add('hidden');
+}
+
+function showError(message) {
+    // You can implement a toast notification here
+    alert('Error: ' + message);
+}
+
+function refreshData() {
+    updateAnalytics();
+}
+
+function exportReport() {
+    if (!currentData) {
+        alert('No data to export');
+        return;
+    }
+    
+    // Create report content
+    const report = {
+        timestamp: new Date().toISOString(),
+        location: document.getElementById('location-select').value,
+        period: document.getElementById('period-select').value,
+        kpis: currentData.kpis,
+        insights: currentData.insights,
+        health: currentData.health
+    };
+    
+    // Download as JSON
+    const dataStr = JSON.stringify(report, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = `transformer_analytics_${new Date().toISOString().slice(0,19)}.json`;
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+}
+
+// Event listeners
+document.getElementById('location-select').addEventListener('change', updateAnalytics);
+document.getElementById('period-select').addEventListener('change', updateAnalytics);
+document.getElementById('analysis-select').addEventListener('change', () => {
+    // Optionally update view based on analysis type
+    updateAnalytics();
+});
+
+// Initialize
+initCharts();
+</script>
+{% endblock %}

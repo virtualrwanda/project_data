@@ -1,0 +1,155 @@
+<!-- templates/faults.html -->
+{% extends "base.html" %}
+
+{% block title %}Faults{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <h1 class="text-3xl font-bold text-gray-800">Fault Analysis</h1>
+    
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Total Faults</p>
+                    <p class="text-3xl font-bold text-red-600">{{ total_faults }}</p>
+                </div>
+                <i class="fas fa-exclamation-triangle text-4xl text-red-500"></i>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Fault Types</p>
+                    <p class="text-3xl font-bold text-orange-600">{{ fault_by_type|length }}</p>
+                </div>
+                <i class="fas fa-list text-4xl text-orange-500"></i>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Locations Affected</p>
+                    <p class="text-3xl font-bold text-blue-600">{{ locations|length }}</p>
+                </div>
+                <i class="fas fa-map-marker-alt text-4xl text-blue-500"></i>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filter -->
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <form method="GET" class="flex gap-4">
+            <div class="flex-1">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Location</label>
+                <select name="location" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="all">All Locations</option>
+                    {% for location in locations %}
+                        <option value="{{ location }}" {% if current_location == location %}selected{% endif %}>{{ location }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition">
+                    <i class="fas fa-filter mr-2"></i>Filter
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Fault Distribution -->
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Fault Distribution by Type</h2>
+        <div class="space-y-3">
+            {% for fault in fault_by_type %}
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <span>{{ fault[0] }}</span>
+                        <span class="font-semibold">{{ fault[1] }}</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="bg-red-500 h-2 rounded-full" style="width: {{ (fault[1] / total_faults * 100) if total_faults > 0 else 0 }}%"></div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Faults List -->
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-xl font-bold text-gray-800">Fault Incidents</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fault Type</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temp (°C)</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current (A)</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vibration</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for fault in faults %}
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ fault.id }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ fault.location }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ fault.reading_datetime.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 rounded-full text-xs bg-red-100 text-red-700">
+                                {{ fault.fault }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ fault.temperature }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ fault.current }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ fault.vibration }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <a href="{{ url_for('view_reading', id=fault.id) }}" class="text-blue-600 hover:text-blue-900">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="px-6 py-4 text-center text-gray-500">No faults found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if pagination.pages > 1 %}
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-sm text-gray-700">
+                        Showing page {{ pagination.page }} of {{ pagination.pages }}
+                        ({{ pagination.total }} total faults)
+                    </p>
+                </div>
+                <div class="flex space-x-2">
+                    {% if pagination.has_prev %}
+                        <a href="{{ url_for('faults', page=pagination.prev_num, location=current_location) }}" 
+                           class="px-3 py-1 bg-white border rounded hover:bg-gray-50">Previous</a>
+                    {% endif %}
+                    
+                    {% if pagination.has_next %}
+                        <a href="{{ url_for('faults', page=pagination.next_num, location=current_location) }}" 
+                           class="px-3 py-1 bg-white border rounded hover:bg-gray-50">Next</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

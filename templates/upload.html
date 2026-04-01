@@ -1,0 +1,163 @@
+<!-- templates/upload.html -->
+{% extends "base.html" %}
+
+{% block title %}Upload CSV{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-lg shadow-lg p-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Upload Transformer Data</h1>
+        
+        <!-- Current Data Statistics -->
+        <div class="mb-6 grid grid-cols-2 gap-4">
+            <div class="bg-blue-50 rounded-lg p-4">
+                <p class="text-sm text-blue-600">Existing Records</p>
+                <p class="text-2xl font-bold text-blue-800">{{ total_records|default(0) }}</p>
+            </div>
+            <div class="bg-green-50 rounded-lg p-4">
+                <p class="text-sm text-green-600">Locations</p>
+                <p class="text-2xl font-bold text-green-800">{{ locations_count|default(0) }}</p>
+            </div>
+        </div>
+        
+        <!-- File Format Info -->
+        <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+            <h2 class="text-lg font-semibold text-blue-800 mb-2">CSV File Format</h2>
+            <p class="text-sm text-blue-700 mb-3">Your CSV file should have the following columns (in any order):</p>
+            
+            <div class="bg-white rounded-lg p-3 mb-3 overflow-x-auto">
+                <pre class="text-xs font-mono text-gray-700">
+serial_number,location,reading_datetime,vibration,temperature,voltage,current,load_status,fault,year,month,day,hour,minute,second,day_of_week,is_weekend,quarter
+TRF-2024-GCM-001,Gicumbi,2024-01-01 00:00:00,2.41,69.84,24956.1,619.4,normal,Normal,2024,1,1,0,0,0,0,False,1
+TRF-2024-GCM-001,Gicumbi,2024-01-01 00:00:20,2.46,65.97,25056.1,658.1,normal,Normal,2024,1,1,0,0,20,0,False,1</pre>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div>
+                    <p class="font-semibold text-blue-800 mb-1">Required Columns:</p>
+                    <ul class="list-disc list-inside text-blue-700 space-y-1">
+                        <li>serial_number - Transformer ID</li>
+                        <li>location - Kigali, Bugesera, Rulindo, Gicumbi</li>
+                        <li>reading_datetime - YYYY-MM-DD HH:MM:SS</li>
+                        <li>vibration - Vibration reading</li>
+                        <li>temperature - Temperature in °C</li>
+                        <li>voltage - Voltage in V</li>
+                        <li>current - Current in A</li>
+                    </ul>
+                </div>
+                <div>
+                    <p class="font-semibold text-blue-800 mb-1">Optional Columns:</p>
+                    <ul class="list-disc list-inside text-blue-700 space-y-1">
+                        <li>load_status - normal, under, over</li>
+                        <li>fault - Fault type if any</li>
+                        <li>year, month, day, hour, minute, second</li>
+                        <li>day_of_week, is_weekend, quarter</li>
+                    </ul>
+                    <p class="text-blue-600 mt-2 text-xs">Missing optional columns will be auto-calculated</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Upload Form -->
+        <form method="POST" enctype="multipart/form-data" class="space-y-6">
+            <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition">
+                <input type="file" name="file" id="file" accept=".csv,.gz" class="hidden" onchange="updateFileName(this)">
+                <label for="file" class="cursor-pointer">
+                    <i class="fas fa-cloud-upload-alt text-5xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-600 mb-2">Click to select or drag and drop</p>
+                    <p class="text-sm text-gray-500">CSV or GZ files up to 1GB</p>
+                </label>
+                <div id="file-name" class="mt-4 text-sm text-gray-600 hidden"></div>
+            </div>
+            
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div class="flex items-start">
+                    <i class="fas fa-info-circle text-yellow-600 mt-1 mr-3"></i>
+                    <div class="text-sm text-yellow-700">
+                        <p class="font-semibold mb-1">Important Notes:</p>
+                        <ul class="list-disc list-inside space-y-1">
+                            <li>Large files may take several minutes to process</li>
+                            <li>Duplicate records (same transformer and timestamp) will be skipped</li>
+                            <li>Invalid records will be automatically filtered out</li>
+                            <li>Summary tables will be automatically updated after upload</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end space-x-4">
+                <a href="{{ url_for('index') }}" class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">Cancel</a>
+                <button type="submit" id="submit-btn" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <i class="fas fa-upload mr-2"></i>Upload CSV
+                </button>
+            </div>
+        </form>
+        
+        <!-- Download Sample -->
+        <div class="mt-6 text-center">
+            <a href="#" id="download-sample" class="text-blue-600 hover:text-blue-800 text-sm">
+                <i class="fas fa-download mr-1"></i>Download Sample CSV
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateFileName(input) {
+    const fileName = input.files[0]?.name;
+    const fileNameDiv = document.getElementById('file-name');
+    const submitBtn = document.getElementById('submit-btn');
+    
+    if (fileName) {
+        fileNameDiv.textContent = `Selected: ${fileName}`;
+        fileNameDiv.classList.remove('hidden');
+        submitBtn.disabled = false;
+    } else {
+        fileNameDiv.classList.add('hidden');
+        submitBtn.disabled = true;
+    }
+}
+
+// Drag and drop functionality
+const dropZone = document.querySelector('.border-dashed');
+dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('border-blue-500', 'bg-blue-50');
+});
+
+dropZone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+});
+
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+    const file = e.dataTransfer.files[0];
+    const fileInput = document.getElementById('file');
+    fileInput.files = e.dataTransfer.files;
+    updateFileName(fileInput);
+});
+
+// Download sample CSV
+document.getElementById('download-sample').addEventListener('click', function(e) {
+    e.preventDefault();
+    
+    const sampleData = `serial_number,location,reading_datetime,vibration,temperature,voltage,current,load_status,fault,year,month,day,hour,minute,second,day_of_week,is_weekend,quarter
+TRF-2024-KGL-001,Kigali,2024-01-01 00:00:00,2.50,70.50,33000.0,800.0,normal,Normal,2024,1,1,0,0,0,0,False,1
+TRF-2024-BGS-001,Bugesera,2024-01-01 00:00:00,2.00,65.00,15000.0,500.0,normal,Normal,2024,1,1,0,0,0,0,False,1
+TRF-2024-RLD-001,Rulindo,2024-01-01 00:00:00,1.80,55.00,11000.0,400.0,normal,Normal,2024,1,1,0,0,0,0,False,1
+TRF-2024-GCM-001,Gicumbi,2024-01-01 00:00:00,2.20,68.00,25000.0,650.0,normal,Normal,2024,1,1,0,0,0,0,False,1`;
+    
+    const blob = new Blob([sampleData], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sample_transformer_data.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+});
+</script>
+{% endblock %}

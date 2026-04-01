@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction Result - Transformer Fault Detection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50">
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-bolt text-indigo-600 text-2xl"></i>
+                    <span class="ml-2 text-xl font-bold">Transformer Monitor</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="text-gray-700 hover:text-indigo-600">Home</a>
+                    <a href="/dashboard" class="text-gray-700 hover:text-indigo-600">Dashboard</a>
+                    <a href="/predict" class="text-indigo-600 font-semibold">Predict</a>
+                    <a href="/readings" class="text-gray-700 hover:text-indigo-600">Readings</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h1 class="text-2xl font-bold mb-6">Prediction Results</h1>
+            
+            <!-- Input Values -->
+            <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                <h3 class="font-semibold mb-3">Input Parameters</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><span class="text-gray-600">Vibration:</span> {{ prediction.values.vibration }} g</div>
+                    <div><span class="text-gray-600">Temperature:</span> {{ prediction.values.temperature }} °C</div>
+                    <div><span class="text-gray-600">Voltage:</span> {{ prediction.values.voltage }} V</div>
+                    <div><span class="text-gray-600">Current:</span> {{ prediction.values.current }} A</div>
+                    <div><span class="text-gray-600">Load Status:</span> {{ prediction.values.load_status }}</div>
+                </div>
+            </div>
+            
+            <!-- Ensemble Prediction -->
+            <div class="mb-6 p-4 rounded-lg {% if prediction.ensemble.fault != 'Normal' %}bg-red-50 border-l-4 border-red-500{% else %}bg-green-50 border-l-4 border-green-500{% endif %}">
+                <h3 class="font-bold text-lg mb-2">Ensemble Prediction</h3>
+                <div class="text-3xl font-bold mb-2">{{ prediction.ensemble.fault }}</div>
+                <div class="text-gray-600">Confidence: {{ "%.1f"|format(prediction.ensemble.confidence) }}%</div>
+            </div>
+            
+            <!-- Individual Model Predictions -->
+            <div class="grid md:grid-cols-2 gap-6">
+                {% if prediction.dl.fault != 'N/A' %}
+                <div class="border rounded-lg p-4">
+                    <div class="flex items-center mb-3">
+                        <i class="fas fa-brain text-purple-600 text-xl mr-2"></i>
+                        <h3 class="font-semibold">Deep Learning</h3>
+                    </div>
+                    <div class="text-xl font-bold mb-1">{{ prediction.dl.fault }}</div>
+                    <div class="text-sm text-gray-600">Confidence: {{ "%.1f"|format(prediction.dl.confidence) }}%</div>
+                </div>
+                {% endif %}
+                
+                <div class="border rounded-lg p-4">
+                    <div class="flex items-center mb-3">
+                        <i class="fas fa-tree text-green-600 text-xl mr-2"></i>
+                        <h3 class="font-semibold">Rule-Based</h3>
+                    </div>
+                    <div class="text-xl font-bold mb-1">{{ prediction.rf.fault }}</div>
+                    <div class="text-sm text-gray-600">Confidence: {{ "%.1f"|format(prediction.rf.confidence) }}%</div>
+                </div>
+            </div>
+            
+            <!-- Recommendations -->
+            <div class="mt-6 bg-blue-50 rounded-lg p-4">
+                <h3 class="font-semibold mb-2 flex items-center">
+                    <i class="fas fa-tools text-blue-600 mr-2"></i>
+                    Recommended Actions
+                </h3>
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                    {% if prediction.ensemble.fault == 'Overheating' %}
+                    <li>Reduce load immediately</li>
+                    <li>Check cooling system operation</li>
+                    <li>Inspect oil levels and quality</li>
+                    {% elif prediction.ensemble.fault == 'Winding Fault' %}
+                    <li>Perform winding resistance test</li>
+                    <li>Check for short circuits</li>
+                    <li>Schedule insulation testing</li>
+                    {% elif prediction.ensemble.fault == 'Partial Discharge' %}
+                    <li class="text-red-600 font-semibold">EMERGENCY: Isolate transformer immediately</li>
+                    <li>Contact maintenance team</li>
+                    <li>Perform detailed diagnostic testing</li>
+                    {% elif prediction.ensemble.fault == 'Normal' %}
+                    <li>Continue regular monitoring</li>
+                    <li>Schedule preventive maintenance</li>
+                    <li>Review operational parameters</li>
+                    {% else %}
+                    <li>Schedule maintenance inspection</li>
+                    <li>Monitor closely for changes</li>
+                    <li>Review historical data for patterns</li>
+                    {% endif %}
+                </ul>
+            </div>
+            
+            <div class="mt-6 flex justify-between">
+                <a href="/predict" class="text-indigo-600 hover:text-indigo-800">
+                    <i class="fas fa-arrow-left mr-1"></i> New Prediction
+                </a>
+                <a href="/dashboard" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
+                    Go to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

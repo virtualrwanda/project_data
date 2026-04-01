@@ -1,0 +1,168 @@
+<!-- templates/add_reading.html -->
+{% extends "base.html" %}
+
+{% block title %}Add Reading{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <div class="bg-white rounded-lg shadow-lg p-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Add New Reading</h1>
+        
+        <form method="POST" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Location *</label>
+                    <select name="location" required class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select Location</option>
+                        {% for location in locations %}
+                            <option value="{{ location }}">{{ location }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Serial Number *</label>
+                    <select name="serial_number" required class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select Serial Number</option>
+                        {% for location, serial in serial_numbers.items() %}
+                            <option value="{{ serial }}">{{ serial }} ({{ location }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Date & Time *</label>
+                    <input type="datetime-local" name="reading_datetime" required 
+                           value="{{ now.strftime('%Y-%m-%dT%H:%M') }}"
+                           class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Current (A) *</label>
+                    <input type="number" step="0.1" name="current" required
+                           class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Temperature (°C) *</label>
+                    <input type="number" step="0.1" name="temperature" required
+                           class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Voltage (V) *</label>
+                    <input type="number" step="0.1" name="voltage" required
+                           class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Vibration *</label>
+                    <input type="number" step="0.01" name="vibration" required
+                           class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Load Status *</label>
+                    <select name="load_status" required class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="normal">Normal</option>
+                        <option value="under">Under Load</option>
+                        <option value="over">Over Load</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Fault Type</label>
+                    <select name="fault" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="Normal">Normal</option>
+                        <option value="Overheat">Overheat</option>
+                        <option value="Mechanical looseness">Mechanical looseness</option>
+                        <option value="Short circuit">Short circuit</option>
+                        <option value="Overload + Thermal">Overload + Thermal</option>
+                        <option value="Partial discharge">Partial discharge</option>
+                        <option value="Voltage sag">Voltage sag</option>
+                        <option value="Harmonic distortion">Harmonic distortion</option>
+                        <option value="Insulation failure">Insulation failure</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Hidden fields for date components -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Year</label>
+                    <input type="number" name="year" id="year" required class="w-full border rounded-lg px-3 py-2 bg-gray-100">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Month</label>
+                    <input type="number" name="month" id="month" required class="w-full border rounded-lg px-3 py-2 bg-gray-100">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Day</label>
+                    <input type="number" name="day" id="day" required class="w-full border rounded-lg px-3 py-2 bg-gray-100">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Hour</label>
+                    <input type="number" name="hour" id="hour" required class="w-full border rounded-lg px-3 py-2 bg-gray-100">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Minute</label>
+                    <input type="number" name="minute" id="minute" required class="w-full border rounded-lg px-3 py-2 bg-gray-100">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Second</label>
+                    <input type="number" name="second" id="second" required class="w-full border rounded-lg px-3 py-2 bg-gray-100">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Day of Week</label>
+                    <input type="number" name="day_of_week" id="day_of_week" required class="w-full border rounded-lg px-3 py-2 bg-gray-100">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Quarter</label>
+                    <input type="number" name="quarter" id="quarter" required class="w-full border rounded-lg px-3 py-2 bg-gray-100">
+                </div>
+            </div>
+            
+            <div>
+                <label class="flex items-center">
+                    <input type="checkbox" name="is_weekend" id="is_weekend" class="rounded border-gray-300 text-blue-600">
+                    <span class="ml-2 text-sm text-gray-700">Is Weekend</span>
+                </label>
+            </div>
+            
+            <div class="flex justify-end space-x-4">
+                <a href="{{ url_for('readings') }}" class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">Cancel</a>
+                <button type="submit" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">Save Reading</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Auto-fill date fields when datetime is selected
+const datetimeInput = document.querySelector('input[name="reading_datetime"]');
+datetimeInput.addEventListener('change', function() {
+    const date = new Date(this.value);
+    document.getElementById('year').value = date.getFullYear();
+    document.getElementById('month').value = date.getMonth() + 1;
+    document.getElementById('day').value = date.getDate();
+    document.getElementById('hour').value = date.getHours();
+    document.getElementById('minute').value = date.getMinutes();
+    document.getElementById('second').value = date.getSeconds();
+    document.getElementById('day_of_week').value = date.getDay();
+    document.getElementById('quarter').value = Math.floor((date.getMonth() / 3)) + 1;
+    document.getElementById('is_weekend').checked = (date.getDay() === 0 || date.getDay() === 6);
+});
+
+// Set initial values
+const now = new Date();
+document.getElementById('year').value = now.getFullYear();
+document.getElementById('month').value = now.getMonth() + 1;
+document.getElementById('day').value = now.getDate();
+document.getElementById('hour').value = now.getHours();
+document.getElementById('minute').value = now.getMinutes();
+document.getElementById('second').value = now.getSeconds();
+document.getElementById('day_of_week').value = now.getDay();
+document.getElementById('quarter').value = Math.floor((now.getMonth() / 3)) + 1;
+document.getElementById('is_weekend').checked = (now.getDay() === 0 || now.getDay() === 6);
+</script>
+{% endblock %}
